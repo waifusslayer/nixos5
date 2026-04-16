@@ -27,7 +27,7 @@ fi
 # Запускаем home-manager switch через nix run
 # --impure нужен чтобы flake мог читать $HOME и $USER из окружения
 cd "$SCRIPT_DIR"
-nix run --impure home-manager/master -- switch --flake .#default
+nix run home-manager/master -- switch --flake .#default --impure
 
 echo ""
 echo "==> Готово! Перезапусти терминал чтобы изменения вступили в силу:"
