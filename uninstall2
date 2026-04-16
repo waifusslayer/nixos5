@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# uninstall.sh — полное удаление окружения Home Manager
+
+set -euo pipefail
+
+# ФИКС: Используем только системные пути, чтобы не зависеть от удаляемого Nix-профиля
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "==> Удаление окружения Home Manager для пользователя: $USER"
+echo ""
+echo "ВНИМАНИЕ: это удалит все пакеты и конфиги, установленные через этот репозиторий."
+echo "Nix и /nix/store НЕ затрагиваются — они общие для всех пользователей сервера."
+echo ""
+read -r -p "Продолжить? [y/N] " CONFIRM
+if [[ ! "$CONFIRM" =~ ^[yY]$ ]]; then
+    echo "Отменено."
+    exit 0
+fi
+
+# 1. Убираем старые генерации
+echo ""
+echo "==> Шаг 1: удаление истории поколений..."
+# Используем полный путь к nix-env, так как мы сбросили PATH
+if /usr/bin/command -v nix-env &>/dev/null; then
+    nix-env --delete-generations old 2>/dev/null || true
+fi
+
+# 2. Удаляем профили и ссылки
+echo "==> Шаг 2: удаление ~/.nix-profile и связанных данных..."
+/usr/bin/rm -rf \
+    "$HOME/.nix-profile" \
+    "$HOME/.nix-defexpr" \
+    "$HOME/.local/state/nix" \
+    "$HOME/.local/state/home-manager" \
+    "$HOME/.config/home-manager" \
+    "$HOME/.nix-channels" \
+    2>/dev/null || true
+
+# 3. Чистим конфиги nix
+echo "==> Шаг 3: очистка ~/.config/nix..."
+/usr/bin/rm -rf "$HOME/.config/nix" 2>/dev/null || true
+
+# 4. Чистим шелл-конфиги
+echo "==> Шаг 4: очистка шелл-конфигов..."
+for RC_FILE in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile" "$HOME/.bash_profile"; do
+    if [ -f "$RC_FILE" ]; then
+        # Удаляем блоки, вставленные Home Manager
+        /usr/bin/sed -i '/# Home Manager session variables/,/^$/d' "$RC_FILE" 2>/dev/null || true
+        /usr/bin/sed -i '/\.nix-profile/d' "$RC_FILE" 2>/dev/null || true
+        /usr/bin/sed -i '/home-manager/d' "$RC_FILE" 2>/dev/null || true
+    fi
+done
+
+# 5. Удаляем репозиторий (самое последнее действие)
+echo "==> Шаг 5: удаление репозитория ($SCRIPT_DIR)..."
+REPO_DIR="$SCRIPT_DIR"
+cd "$HOME"
+/usr/bin/rm -rf "$REPO_DIR"
+
+echo ""
+echo "==> Готово. Окружение удалено."
+echo "    Чтобы применить изменения в текущей сессии, выполните: hash -r"
+echo "    Или просто перезапустите терминал."
