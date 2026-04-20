@@ -47,6 +47,11 @@ nix --version
 Если команда не найдена — обратись к администратору. Самостоятельно устанавливать Nix
 через `sudo` не нужно.
 
+(На всякий вот установка)
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
+  sh -s -- install
+```
 ---
 
 ### 2. Склонируй репозиторий
